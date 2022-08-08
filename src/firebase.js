@@ -1,9 +1,13 @@
 import { async } from "@firebase/util";
 import { initializeApp } from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword, updateProfile, updatePassword, sendEmailVerification, onAuthStateChanged,signInWithEmailAndPassword, signOut  } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification, onAuthStateChanged,signInWithEmailAndPassword, signOut  } from "firebase/auth";
+import { getFirestore, collection, addDoc, query, where, onSnapshot, doc, deleteDoc} from 'firebase/firestore';
 import toast from "react-hot-toast";
 import store from "./store";
 import {login as loginHandle, logout as logoutHandle} from "./store/auth"
+import { openModal } from "./store/modal";
+import todos, { setTodos } from "./store/todos";
+import { setUserData } from "./utils";
 
 // const firebaseConfig = {
 //   apiKey: process.env.REACT_APP_API_KEY,
@@ -27,6 +31,8 @@ const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth();
 
+export const db = getFirestore(app);
+
 export const register = async (email, password) => {
   try{
     const {user} = await createUserWithEmailAndPassword(auth, email, password)
@@ -35,6 +41,19 @@ export const register = async (email, password) => {
     toast.error(error.message)
   }
   
+}
+
+export const reAuth = async password => {
+  try {
+    const creadential = await EmailAuthProvider.credential(
+      auth.currentUser.email,
+      userProviderPassword
+    )
+    const {user} = await reauthenticateWithCredential (auth.currentUser, creadential)
+    return user
+  } catch (error) {
+    toast.error(error.message)
+  } 
 }
 
 export const login = async (email,password) => {
@@ -68,9 +87,14 @@ export const update = async data => {
 export const resetPassword = async password => {
   try{
     await updatePassword(auth.currentUser, password)
-    toast.success('Pasword Updated')
+    toast.success('Password Updated')
     return true
   } catch(error){
+    if(error.code === 'auth/requires-recent-login'){
+      store.dispatch(openModal({
+        name: 're-auth-modal'
+      }))
+    }
     toast.error(error.message)
   }
 }
@@ -86,16 +110,37 @@ export const emailVerificaiton = async () => {
 
 onAuthStateChanged(auth, (user) => {
   if (user) {
-    store.dispatch(loginHandle({
-      displayName: user.displayName,
-      email: user.email,
-      emailVerified: user.emailVerified,
-      photoURL: user.photoURL,
-      uid: user.uid
-    }))
+    setUserData()
+
+    onSnapshot(query(collection(db, 'todos'), where('uid', '==', auth.currentUser.uid)), (doc) => {
+      store.dispatch(
+        setTodos(
+          doc.docs.reduce((todos, todo) => [...todos, {...todo.data(), id: todo.id}], [])
+        )
+      )
+    });
+    
   } else {
     store.dispatch(logoutHandle(user))
   }
 });
+
+export const addTodo = async data => {
+  try{
+    const result = await addDoc(collection(db, 'todos'),data)
+    return result.id
+  } catch(error){
+    toast.error(error.message)
+  }
+}
+
+export const deleteTodo = async id => {
+  try{
+    await deleteDoc(doc(db, 'todos', id))
+  } catch (error) {
+    toast.error(error.message)
+  }
+  
+}
 
 export default app

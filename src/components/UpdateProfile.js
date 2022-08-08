@@ -2,6 +2,7 @@ import { useState } from "react";
 import { update, resetPassword, auth } from "../firebase";
 import { useDispatch, useSelector } from "react-redux";
 import { login } from "../store/auth";
+import { setUserData } from "../utils";
 
 export default function updateProfile() {
   const dispatch = useDispatch();
@@ -16,15 +17,7 @@ export default function updateProfile() {
       displayName,
       photoURL: avatar,
     });
-    dispatch(
-      login({
-        displayName: auth.currentUser.displayName,
-        email: auth.currentUser.email,
-        emailVerified: auth.currentUser.emailVerified,
-        photoURL: auth.currentUser.photoURL,
-        uid: auth.currentUser.uid,
-      })
-    );
+    setUserData()
   };
 
   const handleResetSubmit = async e => {
@@ -87,7 +80,7 @@ export default function updateProfile() {
           </label>
           <div className="mt-1">
             <input
-              type="pasword"
+              type="password"
               className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
               placeholder="Update Password"
               value={password}
