@@ -1,11 +1,19 @@
 import store from "./store";
-import { closeModal } from "./store/modal";
+import { closeModal, openModal } from "./store/modal";
 import { login } from "./store/auth";
 import { auth } from "./firebase";
 
 export const modalClose = () => {
   store.dispatch(closeModal());
 };
+
+export const modal = (name, data = false) => {
+  store.dispatch(openModal({
+    name, 
+    data
+  }));
+};
+
 
 export const setUserData = () => {
   store.dispatch(

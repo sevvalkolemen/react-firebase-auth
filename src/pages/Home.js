@@ -3,13 +3,21 @@ import { useDispatch, useSelector } from "react-redux";
 import { logout, emailVerificaiton, addTodo, deleteTodo } from "../firebase";
 import { logout as logoutHandle } from "../store/auth";
 import { useState } from "react";
+import { modal } from "../utils";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import "dayjs/locale/tr"
+
+dayjs.extend(relativeTime);
+dayjs.locale('tr')
+
 
 export default function Home() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const [todo, setTodo] = useState("");
-
+  const [done, setDone] = useState(true);
   const { todos } = useSelector((state) => state.todos);
 
   const handleLogout = async () => {
@@ -28,6 +36,7 @@ export default function Home() {
     e.preventDefault();
     await addTodo({
       todo,
+      done,
       uid: user.uid,
     });
     setTodo("");
@@ -75,11 +84,15 @@ export default function Home() {
             onChange={(e) => setTodo(e.target.value)}
             className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
           />
+          <label>
+          <input type="checkbox" checked={done} onChange={e=> setDone(e.target.checked)} />
+          Completed
+          </label>
           <button
             disabled={!todo}
             className="inline-flex disabled:opacity-20 cursor-pointer items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
-            Ekle
+            Add
           </button>
         </form>
 
@@ -89,13 +102,24 @@ export default function Home() {
               key={todo.id}
               className="p-4 flex justify-between items-center rounded bg-indigo-50 text-sm text-indigo-700"
             >
+              <span className={`${todo.done ? 'line-through' : ''}`}>
               {todo.todo}
+              </span>
+              {todo?.createdAt && <span>{dayjs.unix(todo.createdAt.seconds).fromNow()}</span>}
+              <div className="flex gap-x-2">
+              <button
+                onClick={() => modal('edit-todo-modal', todo)}
+                className="h-7 rounded px-3 text-xs bg-indigo-700 text-white"
+              >
+                Edit
+              </button>
               <button
                 onClick={() => handleDelete(todo.id)}
                 className="h-7 rounded px-3 text-xs bg-indigo-700 text-white"
               >
                 Delete
               </button>
+              </div>
             </li>
           ))}
           {todos.length === 0 && (

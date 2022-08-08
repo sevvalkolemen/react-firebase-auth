@@ -1,7 +1,7 @@
 import { async } from "@firebase/util";
 import { initializeApp } from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword, updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification, onAuthStateChanged,signInWithEmailAndPassword, signOut  } from "firebase/auth";
-import { getFirestore, collection, addDoc, query, where, onSnapshot, doc, deleteDoc} from 'firebase/firestore';
+import { getAuth, createUserWithEmailAndPassword,  updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification, onAuthStateChanged,signInWithEmailAndPassword, signOut  } from "firebase/auth";
+import { getFirestore, collection, addDoc, query, where, onSnapshot, doc, deleteDoc, serverTimestamp, orderBy, updateDoc} from 'firebase/firestore';
 import toast from "react-hot-toast";
 import store from "./store";
 import {login as loginHandle, logout as logoutHandle} from "./store/auth"
@@ -112,13 +112,14 @@ onAuthStateChanged(auth, (user) => {
   if (user) {
     setUserData()
 
-    onSnapshot(query(collection(db, 'todos'), where('uid', '==', auth.currentUser.uid)), (doc) => {
-      store.dispatch(
-        setTodos(
-          doc.docs.reduce((todos, todo) => [...todos, {...todo.data(), id: todo.id}], [])
+      onSnapshot(query(collection(db, 'todos'), where('uid', '==', user.uid), orderBy('createdAt', 'desc')), (doc) => {
+        store.dispatch(
+          setTodos(
+            doc.docs.reduce((todos, todo) => [...todos, {...todo.data(), id: todo.id}], [])
+          )
         )
-      )
-    });
+      });
+
     
   } else {
     store.dispatch(logoutHandle(user))
@@ -127,12 +128,24 @@ onAuthStateChanged(auth, (user) => {
 
 export const addTodo = async data => {
   try{
+    data.createdAt = serverTimestamp()
     const result = await addDoc(collection(db, 'todos'),data)
     return result.id
   } catch(error){
     toast.error(error.message)
   }
 }
+
+export const updateTodo = async (id, data) => {
+  try{
+    const todoRef = doc(db, 'todos', id);
+    await updateDoc(todoRef, data)
+    toast.success('Todo has been successfully updated')
+  } catch(error) {
+    toast.error(error.message)
+  }
+}
+
 
 export const deleteTodo = async id => {
   try{
